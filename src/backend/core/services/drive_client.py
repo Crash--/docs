@@ -156,7 +156,10 @@ def get_item(item_id, user):
     """Fetch a Drive item (including abilities) with a short per-user cache."""
     sharecode = _sharecode(item_id) or ""
     code_key = hashlib.sha256(sharecode.encode()).hexdigest()[:16] if sharecode else ""
-    cache_key = f"drive_item:{item_id}:{getattr(user, 'sub', 'anonymous')}:{code_key}"
+    version = cache.get(_item_version_key(item_id), 0)
+    cache_key = (
+        f"drive_item:{item_id}:{version}:{getattr(user, 'sub', 'anonymous')}:{code_key}"
+    )
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -164,6 +167,20 @@ def get_item(item_id, user):
     item = _request_item("get", f"/items/{item_id}/", item_id, user)
     cache.set(cache_key, item, ITEM_CACHE_TIMEOUT)
     return item
+
+
+def _item_version_key(item_id):
+    return f"drive_item_version:{item_id}"
+
+
+def forget_item(item_id):
+    """Drop every cached copy of an item (all users, all sharecodes)."""
+    # Bumping a version in the keys works with any cache backend, unlike a key scan.
+    key = _item_version_key(item_id)
+    try:
+        cache.incr(key)
+    except ValueError:
+        cache.set(key, 1, None)
 
 
 def get_tree(item_id, user):

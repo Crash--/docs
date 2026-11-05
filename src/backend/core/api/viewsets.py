@@ -991,6 +991,30 @@ class DocumentViewSet(
 
         return drf_response.Response({"purged": purged}, status=status.HTTP_200_OK)
 
+    @drf.decorators.action(
+        authentication_classes=[authentication.ServerToServerAuthentication],
+        detail=False,
+        methods=["post"],
+        permission_classes=[],
+        url_path="s2s-access-changed",
+    )
+    def s2s_access_changed(self, request):
+        """
+        Drive changed who can read or write these documents: forget the cached Drive
+        items, then make the collaboration server reconnect every client, so each
+        session is checked again with fresh rights. Idempotent.
+        """
+        ids = self._validate_s2s_ids(request)
+        reset = 0
+        for document_id in models.Document.objects.filter(id__in=ids).values_list(
+            "id", flat=True
+        ):
+            drive_client.forget_item(str(document_id))
+            CollaborationService().reset_connections(document_id)
+            reset += 1
+
+        return drf_response.Response({"reset": reset}, status=status.HTTP_200_OK)
+
     @drf.decorators.action(detail=True, methods=["post"])
     @transaction.atomic
     def move(self, request, *args, **kwargs):
