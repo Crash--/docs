@@ -518,6 +518,44 @@ class DocumentViewSet(
     tree_serializer_class = serializers.ListDocumentSerializer
     search_serializer_class = serializers.SearchDocumentSerializer
 
+    def get_object(self):
+        """
+        Adopt a Drive item pointing to Docs that has no document yet: Drive creates the
+        pointer (from its own "create" menu) and Docs creates the document on first open.
+        """
+        try:
+            return super().get_object()
+        except Http404:
+            document = self._adopt_drive_item()
+            if document is None:
+                raise
+            self.check_object_permissions(self.request, document)
+            return document
+
+    def _adopt_drive_item(self):
+        """Create the document of a Drive item the current user can read, if any."""
+        try:
+            pk = str(uuid.UUID(str(self.kwargs.get(self.lookup_field, ""))))
+        except ValueError:
+            return None
+        if not self.request.user.is_authenticated:
+            return None
+        try:
+            item = drive_client.get_item(pk, self.request.user)
+        except drive_client.DriveClientError:
+            return None
+        if (item.get("metadata") or {}).get("external_app") != "docs":
+            return None
+        document, _created = models.Document.objects.get_or_create(
+            id=pk,
+            defaults={
+                "title": item.get("title"),
+                "creator": self.request.user,
+                "drive_api_url": item.get("origin_api_url", ""),
+            },
+        )
+        return document
+
     def get_queryset(self):
         """Get queryset performing all annotation and filtering on the document tree structure."""
         user = self.request.user
