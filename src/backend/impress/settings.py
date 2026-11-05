@@ -87,6 +87,14 @@ class Base(Configuration):
     DRIVE_SERVER_TO_SERVER_TOKEN = values.Value(
         None, environ_name="DRIVE_SERVER_TO_SERVER_TOKEN", environ_prefix=None
     )
+    # One Drive API per user (cozy-stack: one per instance). "{fqdn}" is replaced by the
+    # user's instance, received with the Workplace user events.
+    DRIVE_API_URL_TEMPLATE = values.Value(
+        None, environ_name="DRIVE_API_URL_TEMPLATE", environ_prefix=None
+    )
+    USER_EVENTS_AMQP_URL = values.Value(
+        None, environ_name="USER_EVENTS_AMQP_URL", environ_prefix=None
+    )
 
     # Application definition
     ROOT_URLCONF = "impress.urls"
