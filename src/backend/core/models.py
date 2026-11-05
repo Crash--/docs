@@ -152,6 +152,12 @@ class User(AbstractBaseUser, BaseModel, auth_models.PermissionsMixin):
 
     email = models.EmailField(_("identity email address"), blank=True, null=True)
 
+    # The user's own Drive API when each user has their Drive (one cozy-stack instance
+    # per user). Empty: the single DRIVE_API_BASE_URL.
+    drive_api_url = models.CharField(
+        _("Drive API url"), max_length=255, blank=True, default=""
+    )
+
     # Unlike the "email" field which stores the email coming from the OIDC token, this field
     # stores the email used by staff users to login to the admin site
     admin_email = models.EmailField(
@@ -313,6 +319,7 @@ class User(AbstractBaseUser, BaseModel, auth_models.PermissionsMixin):
             with transaction.atomic():
                 sandbox_document = Document.objects.create(
                     id=drive_item["id"],
+                    drive_api_url=drive_item.get("origin_api_url", ""),
                     title=template_document.title,
                     content=template_document.content,
                     attachments=template_document.attachments,
@@ -807,6 +814,11 @@ class Document(BaseModel):
         related_name="documents_created",
         blank=True,
         null=True,
+    )
+    # The Drive API owning the item, to reach it without a user (a visitor holding a
+    # sharecode). Empty: the single DRIVE_API_BASE_URL.
+    drive_api_url = models.CharField(
+        _("Drive API url"), max_length=255, blank=True, default=""
     )
     deleted_at = models.DateTimeField(null=True, blank=True)
     attachments = ArrayField(

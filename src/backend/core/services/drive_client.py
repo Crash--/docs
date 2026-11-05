@@ -7,6 +7,8 @@ Every call impersonates the acting user through the server-to-server token and
 the X-User-Sub / X-User-Email headers.
 """
 
+import contextvars
+import hashlib
 import logging
 
 from django.conf import settings
@@ -19,6 +21,15 @@ logger = logging.getLogger(__name__)
 
 ITEM_CACHE_TIMEOUT = 10  # seconds
 
+# Drive sharecodes held by the visitor of the current request, by document id. Set by
+# DriveSharecodeMiddleware from the `docs_sharecode_<document id>` cookies.
+SHARECODE_COOKIE_PREFIX = "docs_sharecode_"
+SHARECODES = contextvars.ContextVar("drive_sharecodes", default=None)
+
+
+def _sharecode(item_id):
+    return (SHARECODES.get() or {}).get(str(item_id))
+
 
 class DriveClientError(Exception):
     """Raised when a call to the Drive API fails."""
@@ -28,7 +39,7 @@ class DriveClientError(Exception):
         self.status_code = status_code
 
 
-def _headers(user):
+def _headers(user, sharecode=None):
     headers = {"Authorization": f"Bearer {settings.DRIVE_SERVER_TO_SERVER_TOKEN}"}
     sub = str(getattr(user, "sub", "") or "")
     email = str(getattr(user, "email", "") or "")
@@ -38,18 +49,26 @@ def _headers(user):
         headers["X-User-Sub"] = sub
     if email:
         headers["X-User-Email"] = email
+    if sharecode:
+        headers["X-Drive-Sharecode"] = sharecode
     return headers
 
 
-def _request(method, path, user, **kwargs):
-    """Perform a request to the Drive API on behalf of a user."""
-    if not settings.DRIVE_API_BASE_URL or not settings.DRIVE_SERVER_TO_SERVER_TOKEN:
+def user_api_url(user):
+    """The Drive API of a user: their own when Drives are per user, else the shared one."""
+    return getattr(user, "drive_api_url", "") or settings.DRIVE_API_BASE_URL
+
+
+def _request(method, path, user, base=None, sharecode=None, **kwargs):
+    """Perform a request to a Drive API on behalf of a user."""
+    base = base or user_api_url(user)
+    if not base or not settings.DRIVE_SERVER_TO_SERVER_TOKEN:
         raise DriveClientError("Drive integration is not configured.")
 
-    url = f"{settings.DRIVE_API_BASE_URL}{path}"
+    url = f"{base}{path}"
     try:
         response = requests.request(
-            method, url, headers=_headers(user), timeout=10, **kwargs
+            method, url, headers=_headers(user, sharecode), timeout=10, **kwargs
         )
     except requests.RequestException as exc:
         raise DriveClientError(f"Could not reach Drive: {exc}") from exc
@@ -76,6 +95,49 @@ def raise_as_drf(exc):
     raise drf_exceptions.APIException(str(exc)) from exc
 
 
+def _document_api_url(item_id):
+    # Import here to avoid a circular import through core.models
+    from core.models import Document  # pylint: disable=import-outside-toplevel
+
+    return (
+        Document.objects.filter(pk=item_id)
+        .values_list("drive_api_url", flat=True)
+        .first()
+    )
+
+
+def _targets(item_id, user):
+    """
+    Where to ask for an item: the user's own Drive first, then the Drive owning the
+    document with the visitor's sharecode, if any.
+    """
+    targets = []
+    if user.is_authenticated and user_api_url(user):
+        targets.append((user_api_url(user), None))
+    sharecode = _sharecode(item_id)
+    origin = _document_api_url(item_id)
+    if sharecode and origin:
+        targets.append((origin, sharecode))
+    if not targets and settings.DRIVE_API_BASE_URL:
+        targets.append((settings.DRIVE_API_BASE_URL, None))
+    return targets
+
+
+def _request_item(method, path, item_id, user, **kwargs):
+    """Request an item from the first Drive that grants the user or the visitor access."""
+    last = DriveClientError("No Drive grants access to this item.", status_code=404)
+    for base, sharecode in _targets(item_id, user):
+        try:
+            return _request(
+                method, path, user, base=base, sharecode=sharecode, **kwargs
+            )
+        except DriveClientError as exc:
+            if exc.status_code not in (403, 404):
+                raise
+            last = exc
+    raise last
+
+
 def create_doc_item(user, title, parent_id=None):
     """Create the Drive item representing a document, root or child."""
     payload = {
@@ -84,25 +146,29 @@ def create_doc_item(user, title, parent_id=None):
         "metadata": {"external_app": "docs"},
     }
     if parent_id:
-        return _request("post", f"/items/{parent_id}/children/", user, json=payload)
+        return _request_item(
+            "post", f"/items/{parent_id}/children/", parent_id, user, json=payload
+        )
     return _request("post", "/items/", user, json=payload)
 
 
 def get_item(item_id, user):
     """Fetch a Drive item (including abilities) with a short per-user cache."""
-    cache_key = f"drive_item:{item_id}:{getattr(user, 'sub', 'anonymous')}"
+    sharecode = _sharecode(item_id) or ""
+    code_key = hashlib.sha256(sharecode.encode()).hexdigest()[:16] if sharecode else ""
+    cache_key = f"drive_item:{item_id}:{getattr(user, 'sub', 'anonymous')}:{code_key}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
 
-    item = _request("get", f"/items/{item_id}/", user)
+    item = _request_item("get", f"/items/{item_id}/", item_id, user)
     cache.set(cache_key, item, ITEM_CACHE_TIMEOUT)
     return item
 
 
 def get_tree(item_id, user):
     """Fetch the nested descendants tree of a document from Drive."""
-    return _request("get", f"/items/{item_id}/tree-descendants/", user)
+    return _request_item("get", f"/items/{item_id}/tree-descendants/", item_id, user)
 
 
 def list_root_docs(user, page=1):
@@ -115,19 +181,25 @@ def list_root_docs(user, page=1):
 
 def list_children(item_id, user):
     """List the direct children of a document item."""
-    return _request(
-        "get", f"/items/{item_id}/children/", user, params={"external_app": "docs"}
+    return _request_item(
+        "get",
+        f"/items/{item_id}/children/",
+        item_id,
+        user,
+        params={"external_app": "docs"},
     )
 
 
 def patch_title(item_id, user, title):
     """Push a document rename to Drive."""
-    return _request("patch", f"/items/{item_id}/", user, json={"title": title})
+    return _request_item(
+        "patch", f"/items/{item_id}/", item_id, user, json={"title": title}
+    )
 
 
 def delete_item(item_id, user):
     """Move the Drive item mirroring a document to Drive's trash."""
-    return _request("delete", f"/items/{item_id}/", user)
+    return _request_item("delete", f"/items/{item_id}/", item_id, user)
 
 
 def map_drive_abilities(drive_abilities):

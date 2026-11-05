@@ -512,6 +512,10 @@ class ServerCreateDocumentSerializer(serializers.Serializer):
     id = serializers.UUIDField(required=False)
     title = serializers.CharField(required=True)
     content = serializers.CharField(required=False, allow_blank=True, default="")
+    # The Drive API owning the item, when Drives are per user.
+    drive_api_url = serializers.CharField(
+        required=False, allow_blank=True, default="", max_length=255
+    )
     # User
     sub = serializers.CharField(
         required=True, validators=[validators.sub_validator], max_length=255
@@ -568,6 +572,7 @@ class ServerCreateDocumentSerializer(serializers.Serializer):
         document = models.Document.objects.create(
             title=validated_data["title"],
             creator=user,
+            drive_api_url=validated_data["drive_api_url"],
             **extra_document_fields,
         )
 

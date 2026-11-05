@@ -37,3 +37,34 @@ class SaveRawBodyMiddleware:
 
         response = self.get_response(request)
         return response
+
+
+class DriveSharecodeMiddleware:
+    """
+    Expose to the Drive client the Drive sharecodes the visitor holds, one cookie
+    `docs_sharecode_<document id>` per document opened from a share link.
+    """
+
+    def __init__(self, get_response):
+        """Initialize the middleware."""
+        self.get_response = get_response
+
+    def __call__(self, request):
+        """Scope the visitor's sharecodes to the current request."""
+        # Import here to avoid a circular import through core.models
+        from core.services import (
+            drive_client,  # pylint: disable=import-outside-toplevel
+        )
+
+        prefix = drive_client.SHARECODE_COOKIE_PREFIX
+        token = drive_client.SHARECODES.set(
+            {
+                k[len(prefix) :]: v
+                for k, v in request.COOKIES.items()
+                if k.startswith(prefix)
+            }
+        )
+        try:
+            return self.get_response(request)
+        finally:
+            drive_client.SHARECODES.reset(token)

@@ -683,6 +683,7 @@ class DocumentViewSet(
             drive_client.raise_as_drf(exc)
 
         serializer.validated_data["id"] = drive_item["id"]
+        serializer.validated_data["drive_api_url"] = drive_item.get("origin_api_url", "")
 
         obj = models.Document.objects.create(
             creator=self.request.user,
@@ -1016,6 +1017,9 @@ class DocumentViewSet(
                 drive_client.raise_as_drf(exc)
 
             serializer.validated_data["id"] = drive_item["id"]
+            serializer.validated_data["drive_api_url"] = drive_item.get(
+                "origin_api_url", ""
+            )
 
             child_document = models.Document.objects.create(
                 creator=request.user,
