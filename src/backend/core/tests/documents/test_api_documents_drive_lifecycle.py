@@ -9,7 +9,7 @@ import pytest
 import responses
 from rest_framework.test import APIClient
 
-from core import factories
+from core import factories, models
 from core.services import drive_client
 
 pytestmark = pytest.mark.django_db
@@ -75,3 +75,65 @@ def test_s2s_access_changed_resets_the_sessions():
     assert response.json() == {"reset": 1}
     forget.assert_called_once_with(str(document.id))
     reset.assert_called_once_with(document.id)
+
+
+@override_settings(SERVER_TO_SERVER_API_TOKENS=["DummyToken"])
+def test_s2s_duplicate_copies_the_content_once():
+    """A duplicate made in Drive gets its own document, content copied, idempotent."""
+    source = factories.DocumentFactory(content="c2VjcmV0", attachments=["a/b.png"])
+    new_id = uuid.uuid4()
+    payload = {"source": str(source.id), "id": str(new_id), "drive_api_url": BOB_API}
+
+    for _ in range(2):
+        response = APIClient().post(
+            "/api/v1.0/documents/s2s-duplicate/",
+            payload,
+            format="json",
+            HTTP_AUTHORIZATION="Bearer DummyToken",
+        )
+        assert response.status_code == 200
+
+    copy = models.Document.objects.get(id=new_id)
+    assert (copy.content, copy.attachments, copy.drive_api_url) == (
+        "c2VjcmV0",
+        ["a/b.png"],
+        BOB_API,
+    )
+    assert copy.file_key != source.file_key
+
+
+@override_settings(SERVER_TO_SERVER_API_TOKENS=["DummyToken"])
+def test_s2s_moved_follows_the_owning_drive():
+    """A move to another Drive changes the document's Drive API."""
+    document = factories.DocumentFactory(drive_api_url=ALICE_API)
+
+    response = APIClient().post(
+        "/api/v1.0/documents/s2s-moved/",
+        {"ids": [str(document.id)], "drive_api_url": BOB_API},
+        format="json",
+        HTTP_AUTHORIZATION="Bearer DummyToken",
+    )
+
+    assert response.json() == {"moved": 1}
+    document.refresh_from_db()
+    assert document.drive_api_url == BOB_API
+
+
+@override_settings(SERVER_TO_SERVER_API_TOKENS=["DummyToken"])
+def test_s2s_export_returns_markdown_of_updated_documents():
+    """Drive keeps a readable export: Markdown of the documents updated since a date."""
+    document = factories.DocumentFactory(content="c2VjcmV0")
+
+    with mock.patch(
+        "core.api.viewsets.Converter.convert", return_value="# Hello"
+    ) as convert:
+        response = APIClient().post(
+            "/api/v1.0/documents/s2s-export/",
+            {"since": None},
+            format="json",
+            HTTP_AUTHORIZATION="Bearer DummyToken",
+        )
+
+    exported = {r["id"]: r["markdown"] for r in response.json()["results"]}
+    assert exported[str(document.id)] == "# Hello"
+    convert.assert_called()

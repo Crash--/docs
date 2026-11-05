@@ -1015,6 +1015,102 @@ class DocumentViewSet(
 
         return drf_response.Response({"reset": reset}, status=status.HTTP_200_OK)
 
+    @drf.decorators.action(
+        authentication_classes=[authentication.ServerToServerAuthentication],
+        detail=False,
+        methods=["post"],
+        permission_classes=[],
+        url_path="s2s-duplicate",
+    )
+    def s2s_duplicate(self, request):
+        """
+        Drive duplicated a pointer item: create the independent document behind the
+        copy, with the content and attachments of the source. Idempotent on the new id.
+        """
+        try:
+            source_id = uuid.UUID(str(request.data.get("source")))
+            new_id = uuid.UUID(str(request.data.get("id")))
+        except ValueError as exc:
+            raise drf.exceptions.ValidationError(
+                {"id": "source and id must be UUIDs."}
+            ) from exc
+        source = models.Document.objects.filter(pk=source_id).first()
+        if source is None:
+            raise drf.exceptions.NotFound("Unknown source document.")
+        document, created = models.Document.objects.get_or_create(
+            id=new_id,
+            defaults={
+                "title": request.data.get("title") or source.title,
+                "creator": source.creator,
+                "attachments": source.attachments,
+                "drive_api_url": request.data.get("drive_api_url", ""),
+            },
+        )
+        if created and source.content:
+            document.content = source.content
+            document.save()
+        return drf_response.Response(
+            {"id": str(document.id), "created": created}, status=status.HTTP_200_OK
+        )
+
+    @drf.decorators.action(
+        authentication_classes=[authentication.ServerToServerAuthentication],
+        detail=False,
+        methods=["post"],
+        permission_classes=[],
+        url_path="s2s-moved",
+    )
+    def s2s_moved(self, request):
+        """Drive moved a pointer item to another Drive: follow its owning Drive API."""
+        ids = self._validate_s2s_ids(request)
+        moved = models.Document.objects.filter(id__in=ids).update(
+            drive_api_url=request.data.get("drive_api_url", "")
+        )
+        for document_id in ids:
+            drive_client.forget_item(str(document_id))
+        return drf_response.Response({"moved": moved}, status=status.HTTP_200_OK)
+
+    @drf.decorators.action(
+        authentication_classes=[authentication.ServerToServerAuthentication],
+        detail=False,
+        methods=["post"],
+        permission_classes=[],
+        url_path="s2s-export",
+    )
+    def s2s_export(self, request):
+        """
+        Markdown exports of the documents updated since a date, so that Drive keeps a
+        readable copy in each pointer file (download, search).
+        """
+        since = request.data.get("since")
+        documents = models.Document.objects.filter(deleted_at__isnull=True)
+        if since:
+            documents = documents.filter(updated_at__gt=since)
+        exports = []
+        for document in documents.order_by("updated_at")[:50]:
+            markdown = ""
+            if document.content:
+                try:
+                    markdown = Converter().convert(
+                        base64.b64decode(document.content),
+                        mime_types.YJS,
+                        mime_types.MARKDOWN,
+                    )
+                except (YProviderValidationError, YProviderServiceUnavailableError):
+                    logger.warning("Could not export document %s", document.id)
+                    continue
+            exports.append(
+                {
+                    "id": str(document.id),
+                    "title": document.title,
+                    "updated_at": document.updated_at.isoformat(),
+                    "markdown": markdown
+                    if isinstance(markdown, str)
+                    else markdown.decode(),
+                }
+            )
+        return drf_response.Response({"results": exports}, status=status.HTTP_200_OK)
+
     @drf.decorators.action(detail=True, methods=["post"])
     @transaction.atomic
     def move(self, request, *args, **kwargs):
