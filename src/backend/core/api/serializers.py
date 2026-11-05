@@ -155,7 +155,11 @@ class ListDocumentSerializer(serializers.ModelSerializer):
             except drive_client.DriveClientError:
                 pass  # fields fall back to safe defaults
 
-        return super().to_representation(instance)
+        data = super().to_representation(instance)
+        # Drive owns the title: a rename made in Drive must show in the doc header.
+        if instance.drive_item and instance.drive_item.get("title"):
+            data["title"] = instance.drive_item["title"]
+        return data
 
     def _get_drive_item(self, instance):
         """Return the document's hydrated Drive item, if available."""
