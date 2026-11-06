@@ -6,6 +6,10 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- ✨(backend) let a server choose the id of a document created for an owner
+
 ## [v6.0.4] - 2026-10-26
 
 ### Changed

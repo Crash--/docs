@@ -437,6 +437,7 @@ class ServerCreateDocumentSerializer(serializers.Serializer):
     """
 
     # Document
+    id = serializers.UUIDField(required=False)
     title = serializers.CharField(required=True)
     content = serializers.CharField(required=True)
     # User
@@ -482,6 +483,7 @@ class ServerCreateDocumentSerializer(serializers.Serializer):
         with transaction.atomic():
             document = create_tree_node_with_retry(
                 lambda: models.Document.add_root(
+                    **({"id": validated_data["id"]} if "id" in validated_data else {}),
                     title=validated_data["title"],
                     creator=user,
                 )

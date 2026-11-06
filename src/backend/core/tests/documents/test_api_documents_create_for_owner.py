@@ -783,3 +783,38 @@ def test_api_documents_create_for_owner_collaboration_server_unavailable(mock_yh
     assert response.json() == {"content": ["Could not save the document content"]}
     assert Document.objects.exists() is False
     assert len(mail.outbox) == 0
+
+
+@override_settings(SERVER_TO_SERVER_API_TOKENS=["DummyToken"])
+def test_api_documents_create_for_owner_with_id(mock_convert_md, mock_yhub):
+    """The calling server can choose the id of the document, and replay the request."""
+    user = factories.UserFactory()
+    data = {
+        "id": "6b7a3b54-3f6e-4c7a-9c4b-0d3c2c1b0a99",
+        "title": "My Document",
+        "content": "Document content",
+        "sub": str(user.sub),
+        "email": user.email,
+    }
+
+    first = APIClient().post(
+        "/api/v1.0/documents/create-for-owner/",
+        data,
+        format="json",
+        HTTP_AUTHORIZATION="Bearer DummyToken",
+    )
+    replay = APIClient().post(
+        "/api/v1.0/documents/create-for-owner/",
+        {**data, "title": "Another title"},
+        format="json",
+        HTTP_AUTHORIZATION="Bearer DummyToken",
+    )
+
+    assert first.status_code == 201
+    assert replay.status_code == 200
+    assert first.json() == replay.json() == {"id": data["id"]}
+    document = Document.objects.get()
+    assert str(document.id) == data["id"]
+    assert document.title == "My Document"
+    mock_yhub.return_value.create_ydoc.assert_called_once()
+    assert len(mail.outbox) == 1

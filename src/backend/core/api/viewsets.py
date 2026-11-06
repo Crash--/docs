@@ -950,6 +950,13 @@ class DocumentViewSet(
                 serializer.errors, status=status.HTTP_400_BAD_REQUEST
             )
 
+        # A replayed creation with the same id changes nothing
+        document_id = serializer.validated_data.get("id")
+        if document_id and models.Document.objects.filter(pk=document_id).exists():
+            return drf_response.Response(
+                {"id": str(document_id)}, status=status.HTTP_200_OK
+            )
+
         document = serializer.save()
 
         return drf_response.Response(
