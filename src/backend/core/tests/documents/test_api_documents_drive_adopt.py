@@ -21,12 +21,15 @@ def drive_settings(settings):
     settings.DRIVE_SERVER_TO_SERVER_TOKEN = "s2s"
 
 
-def _item(doc_id, external_app="docs"):
+def _item(doc_id, external_app="docs", external_id=None):
     return {
         "id": str(doc_id),
         "title": "From Drive",
         "user_role": "editor",
-        "metadata": {"external_app": external_app},
+        "metadata": {
+            "external_app": external_app,
+            "externalId": str(external_id or doc_id),
+        },
         "origin_api_url": ALICE_API,
         "abilities": {"retrieve": True, "update": True},
     }
@@ -63,3 +66,18 @@ def test_retrieve_does_not_adopt_another_apps_item():
 
     assert client.get(f"/api/v1.0/documents/{doc_id}/").status_code == 404
     assert not models.Document.objects.filter(id=doc_id).exists()
+
+
+@responses.activate
+def test_retrieve_does_not_adopt_a_copy_not_yet_rewritten():
+    """A copy made in Drive still names its source: no empty document is created for it."""
+    bob = factories.UserFactory(sub="bob", drive_api_url=BOB_API)
+    source_id, copy_id = uuid.uuid4(), uuid.uuid4()
+    responses.get(
+        f"{BOB_API}/items/{copy_id}/", json=_item(copy_id, external_id=source_id)
+    )
+    client = APIClient()
+    client.force_login(bob)
+
+    assert client.get(f"/api/v1.0/documents/{copy_id}/").status_code == 404
+    assert not models.Document.objects.filter(id=copy_id).exists()

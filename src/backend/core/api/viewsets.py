@@ -544,7 +544,10 @@ class DocumentViewSet(
             item = drive_client.get_item(pk, self.request.user)
         except drive_client.DriveClientError:
             return None
-        if (item.get("metadata") or {}).get("external_app") != "docs":
+        metadata = item.get("metadata") or {}
+        # A copy made in Drive keeps the externalId of its source until it is rewritten:
+        # adopting it now would create an empty document under the copy's id.
+        if metadata.get("external_app") != "docs" or metadata.get("externalId") != pk:
             return None
         document, _created = models.Document.objects.get_or_create(
             id=pk,
