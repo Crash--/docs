@@ -9,6 +9,7 @@ and this project adheres to
 ### Added
 
 - ✨(backend) let a server choose the id of a document created for an owner
+- ✨(backend) let a server set the user accesses of a document
 
 ## [v6.0.4] - 2026-10-26
 

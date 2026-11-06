@@ -547,6 +547,118 @@ class ServerCreateDocumentSerializer(serializers.Serializer):
         raise NotImplementedError("Update is not supported for this serializer.")
 
 
+class ServerAccessSerializer(serializers.Serializer):
+    """One user's access in a server-to-server request: a role, or None to remove it."""
+
+    sub = serializers.CharField(
+        required=True, validators=[validators.sub_validator], max_length=255
+    )
+    email = serializers.EmailField(required=True)
+    role = serializers.ChoiceField(
+        required=True, allow_null=True, choices=choices.RoleChoices.choices
+    )
+
+
+class ServerDocumentAccessesSerializer(serializers.Serializer):
+    """
+    Serializer setting the user accesses of a document from a server-to-server request.
+
+    Each listed user gets the given role, or loses their access if the role is None. With
+    "replace", the list is the complete set of user accesses of the document: the users
+    and invitations it does not list are removed. Team accesses are left untouched.
+
+    A user unknown to Docs gets an invitation on their email, turned into an access on
+    their first login. Replaying a request changes nothing.
+
+    Accesses are saved and deleted one by one: the signals of the model notify the
+    collaboration server.
+    """
+
+    accesses = ServerAccessSerializer(many=True)
+    replace = serializers.BooleanField(required=False, default=False)
+
+    def create(self, validated_data):
+        """Apply the accesses to the document given in the context."""
+        document = self.context["document"]
+        counts = dict.fromkeys(["created", "updated", "deleted", "invited"], 0)
+        kept_users, kept_emails = set(), set()
+
+        with transaction.atomic():
+            for access in validated_data["accesses"]:
+                try:
+                    user = models.User.objects.get_user_by_sub_or_email(
+                        access["sub"], access["email"]
+                    )
+                except models.DuplicateEmailError as err:
+                    raise serializers.ValidationError(
+                        {"accesses": [err.message]}
+                    ) from err
+                role = access["role"]
+                if user:
+                    self._set_user_access(document, user, role, counts)
+                    if role:
+                        kept_users.add(user.id)
+                else:
+                    self._set_invitation(document, access["email"], role, counts)
+                    if role:
+                        kept_emails.add(access["email"].lower())
+
+            if validated_data["replace"]:
+                for stale in document.accesses.filter(user__isnull=False).exclude(
+                    user_id__in=kept_users
+                ):
+                    stale.delete()
+                    counts["deleted"] += 1
+                for stale in document.invitations.all():
+                    if stale.email.lower() not in kept_emails:
+                        stale.delete()
+                        counts["deleted"] += 1
+        return counts
+
+    @staticmethod
+    def _set_user_access(document, user, role, counts):
+        access = models.DocumentAccess.objects.filter(
+            document=document, user=user
+        ).first()
+        if role is None:
+            if access:
+                access.delete()
+                counts["deleted"] += 1
+        elif access is None:
+            models.DocumentAccess.objects.create(
+                document=document, user=user, role=role
+            )
+            counts["created"] += 1
+        elif access.role != role:
+            access.role = role
+            access.save()
+            counts["updated"] += 1
+
+    @staticmethod
+    def _set_invitation(document, email, role, counts):
+        invitation = document.invitations.filter(email__iexact=email).first()
+        if role is None:
+            if invitation:
+                invitation.delete()
+                counts["deleted"] += 1
+        elif invitation is None or invitation.is_expired:
+            # an expired invitation is never turned into an access: renew it
+            if invitation:
+                invitation.delete()
+            models.Invitation.objects.create(document=document, email=email, role=role)
+            counts["invited"] += 1
+        elif invitation.role != role:
+            invitation.role = role
+            invitation.save()
+            counts["updated"] += 1
+
+    def update(self, instance, validated_data):
+        """
+        This serializer does not support updates.
+        """
+        raise NotImplementedError("Update is not supported for this serializer.")
+
+
 class LinkDocumentSerializer(serializers.ModelSerializer):
     """
     Serialize link configuration for documents.

@@ -964,6 +964,33 @@ class DocumentViewSet(
         )
 
     @drf.decorators.action(
+        authentication_classes=[authentication.ServerToServerAuthentication],
+        detail=True,
+        methods=["post"],
+        permission_classes=[],
+        throttle_classes=[],
+        url_path="s2s-accesses",
+    )
+    def s2s_accesses(self, request, pk=None):
+        """
+        Set, change or remove user accesses to a document on behalf of the server that
+        owns its sharing.
+        """
+        document = models.Document.objects.filter(pk=pk).first()
+        if document is None:
+            raise drf.exceptions.NotFound("Document not found.")
+
+        serializer = serializers.ServerDocumentAccessesSerializer(
+            data=request.data, context={"document": document}
+        )
+        if not serializer.is_valid():
+            return drf_response.Response(
+                serializer.errors, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return drf_response.Response(serializer.save(), status=status.HTTP_200_OK)
+
+    @drf.decorators.action(
         authentication_classes=[authentication.CollaborationServerAuthentication],
         detail=True,
         methods=["post"],
