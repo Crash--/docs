@@ -1,3 +1,4 @@
+export * from './api/createPlacedDoc';
 export * from './api/useGrants';
 export * from './api/useManagedAccesses';
 export * from './api/useSuggestions';

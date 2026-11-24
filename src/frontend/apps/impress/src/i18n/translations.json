@@ -823,6 +823,8 @@
       "Shared with {{count}} groups_other": "Shared with {{count}} groups",
       "Shared with {{count}} users_one": "Shared with {{count}} user",
       "Shared with {{count}} users_other": "Shared with {{count}} users",
+      "{{count}} members_one": "{{count}} member",
+      "{{count}} members_other": "{{count}} members",
       "days_many": "days",
       "days_one": "day",
       "days_other": "days"
@@ -1591,6 +1593,7 @@
       "Onboarding": "Premiers pas",
       "Only invited people can access": "Seules les personnes invitées peuvent accéder",
       "Open": "Ouverts",
+      "Open Docs": "Ouvrir Docs",
       "Open Source": "Open Source",
       "Open document": "Ouvrir le document",
       "Open document {{title}}": "Ouvrir le document {{title}}",

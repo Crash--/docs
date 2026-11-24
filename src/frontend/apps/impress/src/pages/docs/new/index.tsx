@@ -14,6 +14,7 @@ import {
 } from '@/features/docs/doc-management';
 import { useUpdateDocLink } from '@/features/docs/doc-share/api/useUpdateDocLink';
 import { useSkeletonStore } from '@/features/skeletons';
+import { useCreatePlacedDoc } from '@/features/twake';
 import { MainLayout } from '@/layouts';
 import { NextPageWithLayout } from '@/types/next';
 
@@ -25,9 +26,14 @@ const Page: NextPageWithLayout = () => {
   const linkReach = searchParams.get('link-reach');
   const linkRole = searchParams.get('link-role');
   const title = searchParams.get('title');
+  // From Drive: the instance and folder where the pointer of the document goes
+  const instance = searchParams.get('instance');
+  const dirId = searchParams.get('dir_id');
   const { authenticated } = useAuth();
 
   const { mutateAsync: createDocAsync, data: doc } = useCreateDoc();
+  const { mutateAsync: createPlacedDocAsync, data: placedDoc } =
+    useCreatePlacedDoc();
 
   const { mutateAsync: updateDocLinkAsync } = useUpdateDocLink();
 
@@ -43,7 +49,7 @@ const Page: NextPageWithLayout = () => {
   }, [setIsSkeletonVisible]);
 
   useEffect(() => {
-    if (doc) {
+    if (doc || placedDoc) {
       return;
     }
     if (!authenticated) {
@@ -52,9 +58,15 @@ const Page: NextPageWithLayout = () => {
       return;
     }
 
-    createDocAsync({
-      title: title || undefined,
-    })
+    const create =
+      instance && dirId
+        ? createPlacedDocAsync({
+            placement: { instance, dir_id: dirId },
+            title: title || undefined,
+          })
+        : createDocAsync({ title: title || undefined });
+
+    create
       .then((createdDoc) => {
         if ((linkReach && linkRole) || linkReach) {
           updateDocLinkAsync({
@@ -90,8 +102,12 @@ const Page: NextPageWithLayout = () => {
   }, [
     authenticated,
     createDocAsync,
+    createPlacedDocAsync,
+    dirId,
     doc,
+    instance,
     linkReach,
+    placedDoc,
     linkRole,
     redirectToDoc,
     title,
