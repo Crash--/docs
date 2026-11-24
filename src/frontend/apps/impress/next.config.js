@@ -14,7 +14,14 @@ const nextConfig = {
   // `@blocknote/math-block` imports `katex/dist/katex.min.css` from its entry
   // point; transpiling it lets Next.js accept that global CSS import from
   // within node_modules.
-  transpilePackages: ['@blocknote/math-block'],
+  // The Twake packages are ESM with extensionless imports, which Node refuses
+  // when Next.js prerenders the pages: bundled, they resolve.
+  transpilePackages: [
+    '@blocknote/math-block',
+    '@linagora/twake-bar',
+    '@linagora/twake-mui',
+    '@linagora/twake-sdk',
+  ],
   images: {
     unoptimized: true,
   },
