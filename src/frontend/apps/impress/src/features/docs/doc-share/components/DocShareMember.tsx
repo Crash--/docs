@@ -7,6 +7,7 @@ import { QuickSearchData } from '@/components/quick-search';
 import { QuickSearchGroup } from '@/components/quick-search/QuickSearchGroup';
 import { useCunninghamTheme } from '@/cunningham';
 import { Access, Doc, Role } from '@/docs/doc-management/';
+import { useManagedAccessIds, usePlatform } from '@/features/twake';
 import { useToast } from '@/hooks';
 
 import { useDocAccesses, useUpdateDocAccess } from '../api';
@@ -110,9 +111,15 @@ export const QuickSearchGroupMember = ({
   const membersQuery = useDocAccesses({
     docId: doc.id,
   });
+  // On the platform, the accesses a group or a drive gives are shown as the
+  // group or the drive, not one line per member
+  const { platformURL } = usePlatform();
+  const { data: managedIds } = useManagedAccessIds(doc.id, !!platformURL);
 
   const membersData: QuickSearchData<Access> = useMemo(() => {
-    const members = membersQuery.data || [];
+    const members = (membersQuery.data || []).filter(
+      (access) => !managedIds?.includes(access.id),
+    );
 
     const count = members.length;
 
@@ -130,7 +137,7 @@ export const QuickSearchGroupMember = ({
       elements: members,
       endActions: undefined,
     };
-  }, [membersQuery.data, t]);
+  }, [membersQuery.data, managedIds, t]);
 
   return (
     <Box

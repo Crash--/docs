@@ -21,6 +21,7 @@ import {
   getDocLinkRole,
   useDocUtils,
 } from '@/docs/doc-management';
+import { usePlatform } from '@/features/twake';
 import { useToast } from '@/hooks';
 import { useResponsiveStore } from '@/stores';
 
@@ -44,6 +45,7 @@ export const DocVisibility = ({ doc }: DocVisibilityProps) => {
   const { linkModeTranslations, linkReachChoices, linkReachTranslations } =
     useTranslatedShareSettings();
   const { toast } = useToast();
+  const { platformURL } = usePlatform();
 
   const description =
     docLinkRole === LinkRole.READER
@@ -66,7 +68,14 @@ export const DocVisibility = ({ doc }: DocVisibilityProps) => {
   });
 
   const linkReachOptions: DropdownMenuOption[] = useMemo(() => {
-    return Object.values(LinkReach).map((key) => {
+    // One Docs serves several organizations on the platform: a link for every
+    // signed-in user would cross them
+    const reaches = platformURL
+      ? Object.values(LinkReach).filter(
+          (key) => key !== LinkReach.AUTHENTICATED,
+        )
+      : Object.values(LinkReach);
+    return reaches.map((key) => {
       const isDisabled = doc.abilities.link_select_options[key] === undefined;
       let linkRole = undefined;
       if (key !== LinkReach.RESTRICTED) {
@@ -91,6 +100,7 @@ export const DocVisibility = ({ doc }: DocVisibilityProps) => {
     docLinkReach,
     docLinkRole,
     linkReachTranslations,
+    platformURL,
     updateDocLink,
   ]);
 

@@ -1,4 +1,5 @@
 import { Button, VariantType } from '@gouvfr-lasuite/ui-components';
+import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -7,10 +8,22 @@ import { Box, Card } from '@/components';
 import { useCunninghamTheme } from '@/cunningham';
 import { Doc, Role } from '@/docs/doc-management';
 import { User } from '@/features/auth';
+import {
+  Invitee,
+  KEY_LIST_GRANTS,
+  createGrant,
+  shareByEmail,
+  usePlatform,
+} from '@/features/twake';
 import { useToast } from '@/hooks';
 import { useResponsiveStore } from '@/stores';
 
-import { useCreateDocAccess, useCreateDocInvitation } from '../api';
+import {
+  KEY_LIST_DOC_ACCESSES,
+  KEY_LIST_DOC_INVITATIONS,
+  useCreateDocAccess,
+  useCreateDocInvitation,
+} from '../api';
 import { OptionType } from '../types';
 
 import { DocRoleDropdown } from './DocRoleDropdown';
@@ -43,6 +56,8 @@ export const DocShareAddMemberList = ({
   const canShare = doc.abilities.accesses_manage;
   const { mutateAsync: createInvitation } = useCreateDocInvitation();
   const { mutateAsync: createDocAccess } = useCreateDocAccess();
+  const { platformURL } = usePlatform();
+  const queryClient = useQueryClient();
 
   const onError = (dataError: APIErrorUser) => {
     let messageError =
@@ -82,13 +97,25 @@ export const DocShareAddMemberList = ({
 
   const onInvite = async () => {
     setIsLoading(true);
-    const promises = selectedUsers.map((user) => {
+    const promises = selectedUsers.map((user: Invitee) => {
       const isInvitationMode = user.id === user.email;
 
       const payload = {
         role: invitationRole,
         docId: doc.id,
       };
+
+      // On the platform Docs decides between access and invitation from the
+      // e-mail, and a group gives one grant
+      if (platformURL) {
+        return user.group
+          ? createGrant({
+              ...payload,
+              sourceId: user.group.id,
+              name: user.full_name,
+            })
+          : shareByEmail({ ...payload, email: user.email.toLowerCase() });
+      }
 
       return isInvitationMode
         ? createInvitation({
@@ -107,6 +134,15 @@ export const DocShareAddMemberList = ({
         onError(settledPromise.reason as APIErrorUser);
       }
     });
+    if (platformURL) {
+      await queryClient.invalidateQueries({ queryKey: [KEY_LIST_GRANTS] });
+      await queryClient.invalidateQueries({
+        queryKey: [KEY_LIST_DOC_ACCESSES],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: [KEY_LIST_DOC_INVITATIONS],
+      });
+    }
     afterInvite?.();
     setIsLoading(false);
   };

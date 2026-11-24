@@ -15,6 +15,14 @@ import {
 import { useConfig } from '@/core';
 import { Doc } from '@/docs/doc-management';
 import { User } from '@/features/auth';
+import {
+  InviteGroupRow,
+  Invitee,
+  QuickSearchGroupGrant,
+  toInvitee,
+  usePlatform,
+  useSuggestions,
+} from '@/features/twake';
 import { useResponsiveStore } from '@/stores';
 import { isValidEmail } from '@/utils';
 
@@ -60,8 +68,11 @@ export const DocShareModal = ({ doc, onClose, isRootDoc = true }: Props) => {
   const selectedUsersRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { data: config } = useConfig();
-  const API_USERS_SEARCH_QUERY_MIN_LENGTH =
-    config?.API_USERS_SEARCH_QUERY_MIN_LENGTH || 5;
+  const { platformURL } = usePlatform();
+  // On the platform the Workplace suggests groups and people from two letters
+  const API_USERS_SEARCH_QUERY_MIN_LENGTH = platformURL
+    ? 2
+    : config?.API_USERS_SEARCH_QUERY_MIN_LENGTH || 5;
 
   const { isLargeScreen } = useResponsiveStore();
 
@@ -111,13 +122,25 @@ export const DocShareModal = ({ doc, onClose, isRootDoc = true }: Props) => {
     docId: doc.id,
   });
 
+  const searchEnabled = userQuery?.length >= API_USERS_SEARCH_QUERY_MIN_LENGTH;
   const searchUsersQuery = useUsers(
     { query: userQuery, docId: doc.id },
     {
-      enabled: userQuery?.length >= API_USERS_SEARCH_QUERY_MIN_LENGTH,
+      enabled: searchEnabled && !platformURL,
       queryKey: [KEY_LIST_USER, { query: userQuery }],
     },
   );
+  const suggestionsQuery = useSuggestions(
+    platformURL,
+    userQuery,
+    searchEnabled && !!platformURL,
+  );
+  const searchResults = platformURL
+    ? suggestionsQuery.data?.map(toInvitee)
+    : searchUsersQuery.data;
+  const searchLoading = platformURL
+    ? suggestionsQuery.isLoading
+    : searchUsersQuery.isLoading;
 
   const onFilter = useDebouncedCallback((str: string) => {
     setUserQuery(str);
@@ -294,7 +317,7 @@ export const DocShareModal = ({ doc, onClose, isRootDoc = true }: Props) => {
                   }}
                   inputValue={inputValue}
                   showInput={canShare}
-                  loading={searchUsersQuery.isLoading}
+                  loading={searchLoading}
                   placeholder={t('Type a name or email', {
                     description:
                       'Placeholder of the field searching users to invite',
@@ -313,13 +336,14 @@ export const DocShareModal = ({ doc, onClose, isRootDoc = true }: Props) => {
                     <Box $padding={{ top: 'base' }}>
                       <QuickSearchGroupAccessRequest doc={doc} />
                       <QuickSearchGroupInvitation doc={doc} />
+                      {platformURL && <QuickSearchGroupGrant doc={doc} />}
                       <QuickSearchGroupMember doc={doc} />
                     </Box>
                   )}
 
                   {!showMemberSection && canShare && (
                     <QuickSearchInviteInputSection
-                      searchUsersRawData={searchUsersQuery.data}
+                      searchUsersRawData={searchResults}
                       onSelect={onSelect}
                       userQuery={userQuery}
                       minLength={API_USERS_SEARCH_QUERY_MIN_LENGTH}
@@ -421,7 +445,13 @@ const QuickSearchInviteInputSection = ({
       <QuickSearchGroup
         group={searchUserData}
         onSelect={onSelect}
-        renderElement={(user) => <DocShareModalInviteUserRow user={user} />}
+        renderElement={(user: Invitee) =>
+          user.group ? (
+            <InviteGroupRow user={user} />
+          ) : (
+            <DocShareModalInviteUserRow user={user} />
+          )
+        }
       />
     </Box>
   );
