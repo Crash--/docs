@@ -7,6 +7,7 @@ import { Waffle } from '@/components/Waffle';
 import { ButtonLogin, gotoLogout, useAuth } from '@/features/auth';
 import { HelpMenu } from '@/features/help';
 import { LanguagePicker } from '@/features/language/components/LanguagePicker';
+import { usePlatform } from '@/features/twake';
 
 const FooterActionsGlobalStyle = createGlobalStyle`
   .user-menu__actions .c__language-picker{
@@ -21,6 +22,8 @@ type FooterActionsProps = {
 export const FooterActions = ({ withLogin }: FooterActionsProps) => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  // On the platform the language is a setting of the Workplace, not of Docs
+  const { platformURL } = usePlatform();
 
   const userMenu = user || {
     full_name: t('Guest', {
@@ -44,7 +47,7 @@ export const FooterActions = ({ withLogin }: FooterActionsProps) => {
           <UserMenu
             user={userMenu}
             logout={user ? gotoLogout : undefined}
-            actions={<LanguagePicker />}
+            actions={platformURL ? undefined : <LanguagePicker />}
             withMobileView={false}
           />
           <Waffle />

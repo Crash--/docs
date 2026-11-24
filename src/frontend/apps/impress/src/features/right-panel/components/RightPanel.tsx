@@ -89,7 +89,7 @@ export const RightPanel = () => {
       aria-label={panelLabel}
       inert={!isPanelOpen}
       $width="300px"
-      $height="100dvh"
+      $height="calc(100dvh - var(--twake-bar-height, 0px))"
       $position={isMobile ? 'absolute' : 'sticky'}
       $zIndex={25}
       $hasTransition
