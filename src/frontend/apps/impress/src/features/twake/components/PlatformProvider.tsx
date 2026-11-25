@@ -10,7 +10,11 @@ import {
 
 import { useAuth } from '@/features/auth';
 
-import { useTwakeSession } from '../api/useTwakeSession';
+import {
+  refreshURLOf,
+  renewTwakeSession,
+  useTwakeSession,
+} from '../api/useTwakeSession';
 import { ensureSdkSignedIn, getPlatformSdk, platformURLOf } from '../platform';
 
 export interface Platform {
@@ -34,7 +38,17 @@ const PlatformContext = createContext<Platform>({
  */
 export const PlatformProvider = ({ children }: PropsWithChildren) => {
   const { authenticated } = useAuth();
-  const { data: session } = useTwakeSession(authenticated);
+  const { data: session, error } = useTwakeSession(authenticated);
+  const refreshURL = refreshURLOf(error);
+
+  useEffect(() => {
+    // A frame (the share page in Drive) cannot go through the SSO: it says
+    // to open Docs, which renews the session in its own tab
+    if (refreshURL && window.self === window.top) {
+      renewTwakeSession(refreshURL);
+    }
+  }, [refreshURL]);
+
   const platformURL = session?.workplace_fqdn
     ? platformURLOf(session.workplace_fqdn)
     : null;

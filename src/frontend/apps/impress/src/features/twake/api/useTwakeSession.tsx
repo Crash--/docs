@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { APIError, errorCauses, fetchAPI } from '@/api';
+import { gotoLogin } from '@/features/auth/utils';
+import { safeSessionStorage } from '@/utils/storages';
 
 /**
  * What the Twake bar and SDK need from the session: the id token of the SSO
@@ -13,8 +15,26 @@ export interface TwakeSession {
   workplace_fqdn: string | null;
 }
 
+/** The id token of the session has expired: a silent login brings a new one. */
+export interface TwakeSessionRefresh {
+  refresh_url: string;
+}
+
 export const getTwakeSession = async (): Promise<TwakeSession> => {
-  const response = await fetchAPI(`twake/session/`);
+  const response = await fetchAPI(
+    `twake/session/?${new URLSearchParams({ next: window.location.href })}`,
+  );
+  if (response.status === 401) {
+    const body = (await response
+      .json()
+      .catch(() => null)) as Partial<TwakeSessionRefresh> | null;
+    if (body?.refresh_url) {
+      throw new APIError<TwakeSessionRefresh>('The id token has expired', {
+        status: 401,
+        data: { refresh_url: body.refresh_url },
+      });
+    }
+  }
   if (!response.ok) {
     throw new APIError(
       `Couldn't fetch the Twake session: ${response.statusText}`,
@@ -24,6 +44,31 @@ export const getTwakeSession = async (): Promise<TwakeSession> => {
   return response.json() as Promise<TwakeSession>;
 };
 
+export const refreshURLOf = (error: unknown): string | null =>
+  error instanceof APIError
+    ? ((error.data as Partial<TwakeSessionRefresh> | undefined)?.refresh_url ??
+      null)
+    : null;
+
+const RENEW_KEY = 'twake-session-renew';
+const RENEW_WINDOW_MS = 60_000;
+
+/**
+ * Follows the silent login, once: when the page comes back from it still
+ * without an id token, the session of the SSO itself has ended, and the
+ * normal login page takes over.
+ */
+export const renewTwakeSession = (refreshURL: string) => {
+  const last = Number(safeSessionStorage.getItem(RENEW_KEY) ?? 0);
+  if (Date.now() - last < RENEW_WINDOW_MS) {
+    safeSessionStorage.removeItem(RENEW_KEY);
+    gotoLogin();
+    return;
+  }
+  safeSessionStorage.setItem(RENEW_KEY, String(Date.now()));
+  window.location.replace(refreshURL);
+};
+
 export const KEY_TWAKE_SESSION = 'twake-session';
 
 export function useTwakeSession(enabled: boolean) {
@@ -31,7 +76,10 @@ export function useTwakeSession(enabled: boolean) {
     queryKey: [KEY_TWAKE_SESSION],
     queryFn: getTwakeSession,
     enabled,
-    staleTime: 1000 * 60 * 15,
+    // Read once per page: the SDK then lives on its own token, and a renewal
+    // must never navigate away from a document being edited
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
     retry: false,
   });
 }
