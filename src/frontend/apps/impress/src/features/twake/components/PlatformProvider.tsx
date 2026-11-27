@@ -42,9 +42,7 @@ export const PlatformProvider = ({ children }: PropsWithChildren) => {
   const refreshURL = refreshURLOf(error);
 
   useEffect(() => {
-    // A frame (the share page in Drive) cannot go through the SSO: it says
-    // to open Docs, which renews the session in its own tab
-    if (refreshURL && window.self === window.top) {
+    if (refreshURL) {
       renewTwakeSession(refreshURL);
     }
   }, [refreshURL]);

@@ -80,4 +80,16 @@ describe('the session of the Twake bar', () => {
     renewTwakeSession(REFRESH);
     expect(mockReplace).toHaveBeenLastCalledWith(REFRESH);
   });
+
+  it('never shows the login page of the SSO in a frame', () => {
+    vi.useFakeTimers({ now: 1_000_000 });
+    const top = vi.spyOn(window, 'top', 'get').mockReturnValue({} as Window);
+    renewTwakeSession(REFRESH);
+    expect(mockReplace).toHaveBeenLastCalledWith(REFRESH);
+
+    vi.setSystemTime(1_005_000);
+    renewTwakeSession(REFRESH);
+    expect(mockReplace).toHaveBeenCalledTimes(1);
+    top.mockRestore();
+  });
 });

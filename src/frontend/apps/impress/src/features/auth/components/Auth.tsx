@@ -26,21 +26,17 @@ export const Auth = ({ children }: PropsWithChildren) => {
   } = useAuth();
   const [isRedirecting, setIsRedirecting] = useState(false);
   const { data: config } = useConfig();
-  // Framed by another app (the share intent), the page cannot reach the SSO
-  const framed = typeof window !== 'undefined' && window.self !== window.top;
   const shouldTrySilentLogin = useMemo(
     () =>
       !authenticated &&
       !hasTrySilent() &&
       !isAuthLoading &&
       !isRedirecting &&
-      !framed &&
       config?.FRONTEND_SILENT_LOGIN_ENABLED,
     [
       authenticated,
       isAuthLoading,
       isRedirecting,
-      framed,
       config?.FRONTEND_SILENT_LOGIN_ENABLED,
     ],
   );

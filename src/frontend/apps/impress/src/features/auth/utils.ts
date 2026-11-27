@@ -49,15 +49,20 @@ export const gotoSilentLogin = () => {
       next: window.location.href,
     });
 
-    safeLocalStorage.setItem(SILENT_LOGIN_RETRY, 'true');
+    safeLocalStorage.setItem(SILENT_LOGIN_RETRY, String(Date.now()));
 
     const REDIRECT = `${LOGIN_URL}?${params.toString()}`;
     window.location.replace(REDIRECT);
   }
 };
 
+// A refused silent login only holds back the page it comes back to: a later
+// page tries again, once the user may have signed in to the SSO elsewhere
+const SILENT_LOGIN_RETRY_MS = 60_000;
+
 export const hasTrySilent = () => {
-  return !!safeLocalStorage.getItem(SILENT_LOGIN_RETRY);
+  const triedAt = Number(safeLocalStorage.getItem(SILENT_LOGIN_RETRY));
+  return Date.now() - triedAt < SILENT_LOGIN_RETRY_MS;
 };
 
 export const resetSilent = () => {

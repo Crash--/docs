@@ -61,6 +61,10 @@ const RENEW_WINDOW_MS = 60_000;
 export const renewTwakeSession = (refreshURL: string) => {
   const last = Number(safeSessionStorage.getItem(RENEW_KEY) ?? 0);
   if (Date.now() - last < RENEW_WINDOW_MS) {
+    // The login page of the SSO never shows in the frame of another app
+    if (window.self !== window.top) {
+      return;
+    }
     safeSessionStorage.removeItem(RENEW_KEY);
     gotoLogin();
     return;
