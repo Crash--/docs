@@ -1,0 +1,232 @@
+/*
+ * Docs in the look of Twake Workplace, served at /twake-theme/theme.css (/twake/ is
+ * kept for the admin routes of the twake app) and loaded
+ * through FRONTEND_CSS_URL. Values from twake-mui (palette.json of twake-css,
+ * radius.ts, makeShadows.ts, makePalette.ts, Layout/Content.tsx).
+ *
+ * The provider of ui-components puts the theme class on <html>: values shared
+ * by both schemes go on `html:root`, light-only ones on
+ * `html:root:not(.cunningham-theme--dark)` and dark-only ones on
+ * `html.cunningham-theme--dark`, each one more specific than the bundle.
+ */
+
+html:root {
+  /* Primary of twake-css; the odd steps are interpolated (provisional) */
+  --c--globals--colors--brand-050: #f6fbff;
+  --c--globals--colors--brand-100: #e3f1ff;
+  --c--globals--colors--brand-150: #dbedff;
+  --c--globals--colors--brand-200: #d2e9ff;
+  --c--globals--colors--brand-250: #c8e4ff;
+  --c--globals--colors--brand-300: #bfdfff;
+  --c--globals--colors--brand-350: #9dceff;
+  --c--globals--colors--brand-400: #7bbdff;
+  --c--globals--colors--brand-450: #60afff;
+  --c--globals--colors--brand-500: #46a2ff;
+  --c--globals--colors--brand-550: #2893ff;
+  --c--globals--colors--brand-600: #0a84ff;
+  --c--globals--colors--brand-650: #0577eb;
+  --c--globals--colors--brand-700: #006bd8;
+  --c--globals--colors--brand-750: #0161c2;
+  --c--globals--colors--brand-800: #0157ad;
+  --c--globals--colors--brand-850: #053c73;
+  --c--globals--colors--brand-900: #082139;
+  --c--globals--colors--brand-950: #05141f;
+  --c--globals--colors--logo-1-light: #0a84ff;
+  --c--globals--colors--logo-2-light: #0a84ff;
+  --c--globals--colors--logo-1-dark: #7bbdff;
+  --c--globals--colors--logo-2-dark: #7bbdff;
+
+  /* Grey of twake-css, A400 and A900 for the darkest steps */
+  --c--globals--colors--gray-025: #fbfdff;
+  --c--globals--colors--gray-050: #f3f6f9;
+  --c--globals--colors--gray-100: #edf2f7;
+  --c--globals--colors--gray-150: #e1e3e6;
+  --c--globals--colors--gray-200: #d3d5d8;
+  --c--globals--colors--gray-250: #c5c7ca;
+  --c--globals--colors--gray-300: #b8babc;
+  --c--globals--colors--gray-350: #aaacae;
+  --c--globals--colors--gray-400: #9d9fa1;
+  --c--globals--colors--gray-450: #909294;
+  --c--globals--colors--gray-500: #838587;
+  --c--globals--colors--gray-550: #757779;
+  --c--globals--colors--gray-600: #626466;
+  --c--globals--colors--gray-650: #4e5052;
+  --c--globals--colors--gray-700: #48494b;
+  --c--globals--colors--gray-750: #424244;
+  --c--globals--colors--gray-800: #2c3039;
+  --c--globals--colors--gray-850: #242629;
+  --c--globals--colors--gray-900: #1c1b1f;
+
+  /* radius.ts: buttons and badges are pills, a paper is 6px (shape) */
+  --c--components--button--border-radius: 100px;
+  --c--components--button--border-radius--active: 100px;
+  --c--components--button--border-radius--focus: 100px;
+  --c--components--badge--border-radius: 100px;
+  --c--components--modal--border-radius: 6px;
+  --c--components--tooltip--border-radius: 4px;
+  --twake-background-default: #f3f6f9;
+  --twake-background-paper: #fff;
+  --twake-action-hover: rgb(66 66 68 / 4%);
+  --twake-action-selected: rgb(66 66 68 / 8%);
+  --twake-divider: rgb(66 66 68 / 12%);
+
+  /* makeShadows: elevation 24 (dialog) and 8 (menu) */
+  --twake-shadow-24:
+    0 12px 16px -8px rgb(66 66 68 / 24%), 0 12px 48px 8px rgb(66 66 68 / 24%),
+    0 0 0 0.5px rgb(66 66 68 / 12%);
+  --twake-shadow-8:
+    0 5px 8px -2px rgb(66 66 68 / 13%), 0 6px 26px 2px rgb(66 66 68 / 11%),
+    0 0 0 0.5px rgb(66 66 68 / 12%);
+  --c--components--modal--box-shadow: var(--twake-shadow-24);
+  --c--components--modal--background-color: var(--twake-background-paper);
+}
+
+html:root:not(.cunningham-theme--dark) {
+  --c--contextuals--background--semantic--brand--primary: #0a84ff;
+  --c--contextuals--background--semantic--brand--primary-hover: #006bd8;
+  --c--contextuals--content--semantic--brand--primary: #0a84ff;
+  --c--contextuals--content--semantic--neutral--primary: rgb(66 66 68 / 90%);
+  --c--contextuals--content--semantic--neutral--secondary: rgb(66 66 68 / 64%);
+  --c--contextuals--border--surface--primary: var(--twake-divider);
+}
+
+html.cunningham-theme--dark {
+  --twake-background-default: #2c3039;
+  --twake-background-paper: #4e5052;
+  --twake-action-hover: rgb(255 255 255 / 8%);
+  --twake-action-selected: rgb(255 255 255 / 16%);
+  --twake-divider: rgb(255 255 255 / 16%);
+  --twake-shadow-24:
+    0 12px 16px -8px rgb(0 0 0 / 24%), 0 12px 48px 8px rgb(0 0 0 / 24%),
+    0 0 0 0.5px rgb(255 255 255 / 8%);
+  --twake-shadow-8:
+    0 5px 8px -2px rgb(0 0 0 / 13%), 0 6px 26px 2px rgb(0 0 0 / 11%),
+    0 0 0 0.5px rgb(255 255 255 / 8%);
+  --c--contextuals--background--surface--primary: var(--twake-background-paper);
+  --c--contextuals--background--surface--secondary: var(
+    --twake-background-default
+  );
+  --c--contextuals--background--surface--tertiary: var(
+    --twake-background-default
+  );
+  --c--contextuals--background--semantic--brand--primary: #7bbdff;
+  --c--contextuals--background--semantic--brand--primary-hover: #46a2ff;
+  --c--contextuals--content--semantic--brand--on-brand: rgb(66 66 68 / 90%);
+  --c--contextuals--content--semantic--brand--primary: #7bbdff;
+  --c--contextuals--content--semantic--neutral--primary: #fff;
+  --c--contextuals--content--semantic--neutral--secondary: rgb(
+    255 255 255 / 64%
+  );
+  --c--contextuals--border--surface--primary: var(--twake-divider);
+}
+
+/* Layout/Content.tsx: the page in background.default, the content a paper
+   card 16px from the edges, flat under 1024px */
+html .--docs--main-layout {
+  background: var(--twake-background-default);
+}
+
+html .--docs--left-panel {
+  background: transparent;
+  border-right: none;
+}
+
+@media (width >= 1024px) {
+  html [id='mainContent'] {
+    height: calc(100dvh - var(--twake-bar-height, 0px) - 32px);
+    margin: 16px 16px 16px 0;
+    border-radius: 16px;
+    background: var(--twake-background-paper);
+  }
+}
+
+/* Under the Twake bar, the bar names the app: no second logo, and the
+   panel has no rules of its own, as the navigation of Drive */
+body:has(#twake-bar)
+  .--docs--left-panel-header
+  > :has(> .--docs--header-logo-link) {
+  display: none;
+}
+
+html .--docs--left-panel-header > *,
+html .--docs--footer-actions {
+  border-color: transparent;
+}
+
+/* The editor is always given the light scheme of BlockNote: its variables
+   follow the Cunningham ones instead, in both schemes */
+html .bn-root.bn-container.bn-mantine {
+  --bn-colors-editor-background: var(
+    --c--contextuals--background--surface--primary
+  );
+  --bn-colors-editor-text: var(
+    --c--contextuals--content--semantic--neutral--primary
+  );
+  --bn-colors-menu-background: var(--twake-background-paper);
+  --bn-colors-menu-text: var(
+    --c--contextuals--content--semantic--neutral--primary
+  );
+  --bn-colors-tooltip-background: var(
+    --c--contextuals--background--semantic--neutral--primary
+  );
+  --bn-colors-tooltip-text: var(
+    --c--contextuals--content--semantic--neutral--on-neutral
+  );
+  --bn-colors-hovered-background: var(--twake-action-hover);
+  --bn-colors-hovered-text: var(
+    --c--contextuals--content--semantic--neutral--primary
+  );
+  --bn-colors-selected-background: var(--twake-action-selected);
+  --bn-colors-selected-text: var(
+    --c--contextuals--content--semantic--neutral--primary
+  );
+  --bn-colors-border: var(--twake-divider);
+  --bn-colors-shadow: var(--twake-divider);
+  --bn-colors-side-menu: var(
+    --c--contextuals--content--semantic--neutral--tertiary
+  );
+}
+
+/* The bar over a document fades from a hard-coded white */
+html .--docs--floating-bar::before {
+  background: linear-gradient(
+    180deg,
+    var(--c--contextuals--background--surface--primary) 0%,
+    transparent 100%
+  );
+}
+
+/* The quick search of the share dialog paints itself white */
+html .quick-search-container [cmdk-root],
+html .quick-search-container [cmdk-input] {
+  background: transparent;
+}
+
+/* The New button sets its radius inline, split when its menu is there */
+html [data-testid='new-doc-button'] {
+  border-radius: 100px !important;
+}
+
+html [data-testid='new-doc-button']:has(+ .c__dropdown-menu-trigger) {
+  border-radius: 100px 0 0 100px !important;
+}
+
+html [data-testid='new-doc-button'] + .c__dropdown-menu-trigger button {
+  border-radius: 0 100px 100px 0 !important;
+}
+
+/* Menus: a paper of elevation 8 */
+html .--docs--drop-button-popover {
+  border-radius: 6px;
+  box-shadow: var(--twake-shadow-8);
+}
+
+/* The header of phones animates the logo of Docs (a Lottie file, not
+   configurable): the icon of the theme takes its place */
+html div:has(> canvas[aria-label='Docs animated icon']) {
+  background: url('/twake-theme/docs-icon.svg') center / contain no-repeat;
+}
+
+html canvas[aria-label='Docs animated icon'] {
+  visibility: hidden;
+}
