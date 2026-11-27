@@ -8,6 +8,7 @@ import { I18n } from 'twake-i18n';
 
 import { gotoLogout, useAuth } from '@/features/auth';
 
+import { useCssColorTokens } from '../hooks/useCssColorTokens';
 import { useInstanceTheme } from '../hooks/useInstanceTheme';
 
 import { usePlatform } from './PlatformProvider';
@@ -61,6 +62,7 @@ export const TwakeBarHeader = () => {
   const { i18n } = useTranslation();
   const { pathname } = useRouter();
   const scheme = useInstanceTheme(sdk, status === 'ready');
+  useCssColorTokens();
   const lang = (i18n.resolvedLanguage ?? i18n.language ?? 'en').split('-')[0];
 
   // The share page is framed by Drive, under the bar of Drive
