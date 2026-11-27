@@ -34,7 +34,8 @@ const BarSpace = createGlobalStyle`
 const APP = {
   slug: 'docs',
   name: 'Docs',
-  icon: '/assets/icon-docs.svg',
+  icon: '/twake-theme/docs-icon.svg',
+  textIcon: '/twake-theme/docs-text.svg',
 };
 
 // The bar has its own locales; the host gives nothing more
