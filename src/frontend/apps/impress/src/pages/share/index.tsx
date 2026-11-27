@@ -8,7 +8,12 @@ import { useTranslation } from 'react-i18next';
 import { Box, Loading, Text } from '@/components';
 import { KEY_DOC, useDoc } from '@/docs/doc-management';
 import { useAuth, useAuthQuery } from '@/features/auth';
-import { refreshURLOf, usePlatform, useTwakeSession } from '@/features/twake';
+import {
+  hasTriedRenewal,
+  refreshURLOf,
+  usePlatform,
+  useTwakeSession,
+} from '@/features/twake';
 import { NextPageWithLayout } from '@/types/next';
 
 const DocShareModal = dynamic(
@@ -36,8 +41,10 @@ const Page: NextPageWithLayout = () => {
     isFetched: sessionFetched,
     error: sessionError,
   } = useTwakeSession(authenticated);
-  // The id token of the session has expired: only a tab of Docs renews it
-  const mustRenew = !!refreshURLOf(sessionError);
+  // The id token of the session has expired: the platform renews it once
+  // through a silent login, a second expiry means the SSO session has ended
+  const expired = !!refreshURLOf(sessionError);
+  const mustRenew = expired && hasTriedRenewal();
   const [service, setService] = useState<IntentServiceAPI | null>(null);
   const [docId, setDocId] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -95,6 +102,9 @@ const Page: NextPageWithLayout = () => {
         })}
       </Message>
     );
+  }
+  if (expired && !mustRenew) {
+    return <Loading />;
   }
   if ((hasInitiallyLoaded && !authenticated) || mustRenew) {
     // No login can happen in the frame of Drive (ADR 052): Docs opens in a tab

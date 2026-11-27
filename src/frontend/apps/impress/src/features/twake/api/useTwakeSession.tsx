@@ -53,14 +53,18 @@ export const refreshURLOf = (error: unknown): string | null =>
 const RENEW_KEY = 'twake-session-renew';
 const RENEW_WINDOW_MS = 60_000;
 
+/** The page comes back from a silent login that brought no id token. */
+export const hasTriedRenewal = () =>
+  Date.now() - Number(safeSessionStorage.getItem(RENEW_KEY) ?? 0) <
+  RENEW_WINDOW_MS;
+
 /**
  * Follows the silent login, once: when the page comes back from it still
  * without an id token, the session of the SSO itself has ended, and the
  * normal login page takes over.
  */
 export const renewTwakeSession = (refreshURL: string) => {
-  const last = Number(safeSessionStorage.getItem(RENEW_KEY) ?? 0);
-  if (Date.now() - last < RENEW_WINDOW_MS) {
+  if (hasTriedRenewal()) {
     // The login page of the SSO never shows in the frame of another app
     if (window.self !== window.top) {
       return;
