@@ -6,7 +6,15 @@ import { User } from '@/features/auth';
  * them. A group gives a grant, a person an access or an invitation by email.
  */
 export type Suggestion =
-  | { kind: 'group'; id: string; name: string; memberCount: number }
+  | {
+      kind: 'group';
+      id: string;
+      name: string;
+      memberCount: number;
+      /** The directory entry of an organization group, where its members are read */
+      organizationId: string | null;
+      externalId: string | null;
+    }
   | { kind: 'person'; email: string; fullName: string };
 
 export interface ApiSuggestion {
@@ -15,9 +23,10 @@ export interface ApiSuggestion {
   attributes: {
     name?: string;
     member_count?: number;
+    organization_id?: string;
+    external_id?: string;
     fullname?: string;
     email?: { address: string; primary?: boolean }[];
-    twakeDirectory?: { externalId?: string };
   };
 }
 
@@ -27,10 +36,11 @@ export const toSuggestions = (data: ApiSuggestion[]): Suggestion[] => {
     if (item.type === 'io.cozy.contacts.groups') {
       result.push({
         kind: 'group',
-        // The id the organization knows the group by, else the stack's copy
-        id: item.attributes.twakeDirectory?.externalId ?? item.id ?? '',
+        id: item.id ?? '',
         name: item.attributes.name ?? '',
         memberCount: item.attributes.member_count ?? 0,
+        organizationId: item.attributes.organization_id ?? null,
+        externalId: item.attributes.external_id ?? null,
       });
       continue;
     }
@@ -54,7 +64,12 @@ export const toSuggestions = (data: ApiSuggestion[]): Suggestion[] => {
  * person, as for the invitees typed by hand.
  */
 export type Invitee = User & {
-  group?: { id: string; memberCount: number };
+  group?: {
+    id: string;
+    memberCount: number;
+    organizationId: string | null;
+    externalId: string | null;
+  };
 };
 
 export const toInvitee = (suggestion: Suggestion): Invitee =>
@@ -65,7 +80,12 @@ export const toInvitee = (suggestion: Suggestion): Invitee =>
         full_name: suggestion.name,
         short_name: suggestion.name,
         is_first_connection: false,
-        group: { id: suggestion.id, memberCount: suggestion.memberCount },
+        group: {
+          id: suggestion.id,
+          memberCount: suggestion.memberCount,
+          organizationId: suggestion.organizationId,
+          externalId: suggestion.externalId,
+        },
       }
     : {
         id: suggestion.email,

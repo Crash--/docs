@@ -43,6 +43,8 @@ interface CreateGrantParams {
   sourceId: string;
   name: string;
   role: Role;
+  organizationId: string | null;
+  externalId: string | null;
 }
 
 export const createGrant = async ({
@@ -50,12 +52,16 @@ export const createGrant = async ({
   sourceId,
   name,
   role,
+  organizationId,
+  externalId,
 }: CreateGrantParams): Promise<Grant> => {
   const response = await fetchAPI(grantsUrl(docId), {
     method: 'POST',
     body: JSON.stringify({
       source_kind: 'group',
       source_id: sourceId,
+      organization_id: organizationId,
+      external_id: externalId,
       name,
       role,
     }),

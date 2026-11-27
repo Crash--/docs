@@ -112,6 +112,8 @@ export const DocShareAddMemberList = ({
           ? createGrant({
               ...payload,
               sourceId: user.group.id,
+              organizationId: user.group.organizationId,
+              externalId: user.group.externalId,
               name: user.full_name,
             })
           : shareByEmail({ ...payload, email: user.email.toLowerCase() });

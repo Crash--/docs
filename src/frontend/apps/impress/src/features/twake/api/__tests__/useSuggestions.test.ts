@@ -9,7 +9,8 @@ describe('toSuggestions', () => {
         attributes: {
           name: 'RH',
           member_count: 3,
-          twakeDirectory: { externalId: 'ldap-rh' },
+          organization_id: 'acme',
+          external_id: 'ldap-rh',
         },
       },
       {
@@ -26,7 +27,15 @@ describe('toSuggestions', () => {
     ]);
 
     expect(suggestions).toEqual([
-      { kind: 'group', id: 'ldap-rh', name: 'RH', memberCount: 3 },
+      // The id of the stack, which the grant keeps; the directory entry aside
+      {
+        kind: 'group',
+        id: 'stack-id',
+        name: 'RH',
+        memberCount: 3,
+        organizationId: 'acme',
+        externalId: 'ldap-rh',
+      },
       { kind: 'person', email: 'bob@acme.test', fullName: 'Bob' },
     ]);
   });
@@ -46,11 +55,18 @@ describe('toInvitee', () => {
   it('keeps the group aside of the user fields', () => {
     const invitee = toInvitee({
       kind: 'group',
-      id: 'ldap-rh',
+      id: 'stack-id',
       name: 'RH',
       memberCount: 3,
+      organizationId: 'acme',
+      externalId: 'ldap-rh',
     });
     expect(invitee.full_name).toBe('RH');
-    expect(invitee.group).toEqual({ id: 'ldap-rh', memberCount: 3 });
+    expect(invitee.group).toEqual({
+      id: 'stack-id',
+      memberCount: 3,
+      organizationId: 'acme',
+      externalId: 'ldap-rh',
+    });
   });
 });
