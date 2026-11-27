@@ -2,7 +2,7 @@ import fetchMock from 'fetch-mock';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SILENT_LOGIN_RETRY } from '../conf';
-import { gotoLogout, gotoSilentLogin } from '../utils';
+import { gotoLogout, gotoSilentLogin, hasTrySilent } from '../utils';
 
 // Add mock on window.location.replace
 const mockReplace = vi.fn();
@@ -41,6 +41,23 @@ describe('utils', () => {
     expect(mockReplace).toHaveBeenCalledWith(
       'http://test.jest/api/v1.0/authenticate/?silent=true&next=http%3A%2F%2Ftest.jest%2F',
     );
-    expect(setItemSpy).toHaveBeenCalledWith(SILENT_LOGIN_RETRY, 'true');
+    expect(setItemSpy).toHaveBeenCalledWith(
+      SILENT_LOGIN_RETRY,
+      expect.stringMatching(/^\d+$/),
+    );
+  });
+
+  it('holds back a new silent login for a minute only', () => {
+    vi.useFakeTimers({ now: 1_000_000 });
+    gotoSilentLogin();
+    expect(hasTrySilent()).toBe(true);
+
+    vi.setSystemTime(1_000_000 + 61_000);
+    expect(hasTrySilent()).toBe(false);
+
+    // The flag of an older Docs never expired
+    localStorage.setItem(SILENT_LOGIN_RETRY, 'true');
+    expect(hasTrySilent()).toBe(false);
+    vi.useRealTimers();
   });
 });

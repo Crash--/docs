@@ -18,7 +18,11 @@ export function PageLayout({
   withLeftPanel = true,
 }: PropsWithChildren<PageLayoutProps>) {
   return (
-    <Box className="--docs--page-layout" $direction="row" $minHeight="100vh">
+    <Box
+      className="--docs--page-layout"
+      $direction="row"
+      $minHeight="calc(100vh - var(--twake-bar-height, 0px))"
+    >
       {withLeftPanel && <LeftPanel />}
       <MainContent>
         <HeaderFloatingBar />

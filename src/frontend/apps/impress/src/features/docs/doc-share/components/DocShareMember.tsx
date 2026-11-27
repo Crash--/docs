@@ -7,6 +7,7 @@ import { QuickSearchData } from '@/components/quick-search';
 import { QuickSearchGroup } from '@/components/quick-search/QuickSearchGroup';
 import { useCunninghamTheme } from '@/cunningham';
 import { Access, Doc, Role } from '@/docs/doc-management/';
+import { useManagedAccessIds, usePlatform } from '@/features/twake';
 import { useToast } from '@/hooks';
 
 import { useDocAccesses, useUpdateDocAccess } from '../api';
@@ -101,24 +102,36 @@ export const DocShareMemberItem = ({
 
 interface QuickSearchGroupMemberProps {
   doc: Doc;
+  /** The inherited accesses are listed apart, under the parent page */
+  directOnly?: boolean;
 }
 
 export const QuickSearchGroupMember = ({
   doc,
+  directOnly = false,
 }: QuickSearchGroupMemberProps) => {
   const { t } = useTranslation();
   const membersQuery = useDocAccesses({
     docId: doc.id,
   });
+  // On the platform, the accesses a group or a drive gives are shown as the
+  // group or the drive, not one line per member
+  const { platformURL } = usePlatform();
+  const { data: managedIds } = useManagedAccessIds(doc.id, !!platformURL);
 
   const membersData: QuickSearchData<Access> = useMemo(() => {
-    const members = membersQuery.data || [];
+    const members = (membersQuery.data || []).filter(
+      (access) =>
+        !managedIds?.includes(access.id) &&
+        (!directOnly || access.document.id === doc.id),
+    );
 
     const count = members.length;
 
     return {
       groupName:
-        count === 1
+        // The owner of a sub-page is listed with its parent, not here
+        count === 1 && !directOnly
           ? t('Document owner', {
               description: 'Label of the single owner of a document',
             })
@@ -130,7 +143,7 @@ export const QuickSearchGroupMember = ({
       elements: members,
       endActions: undefined,
     };
-  }, [membersQuery.data, t]);
+  }, [membersQuery.data, managedIds, directOnly, doc.id, t]);
 
   return (
     <Box

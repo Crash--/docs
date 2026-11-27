@@ -39,7 +39,7 @@ export const LeftPanel = ({ isResizable }: { isResizable?: boolean }) => {
           description: 'Accessible name of the left navigation panel',
         })}
         $width={isResizable ? '100%' : '300px'}
-        $height="100dvh"
+        $height="calc(100dvh - var(--twake-bar-height, 0px))"
         $overflow="hidden"
         $css={css`
           z-index: 1;
@@ -78,7 +78,7 @@ export const LeftPanel = ({ isResizable }: { isResizable?: boolean }) => {
                   box-shadow: 10px 0px 10px 0px rgba(0, 0, 0, 0.05);
                   position: fixed;
                   z-index: 1000;
-                  top: 0;
+                  top: var(--twake-bar-height, 0px);
                   left: 0;
                   ${
                     !isPanelOpen

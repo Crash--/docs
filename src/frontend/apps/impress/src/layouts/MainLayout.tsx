@@ -27,7 +27,7 @@ export function MainLayout({
       className="--docs--main-layout"
       $direction="row"
       $width="100%"
-      $height="100dvh"
+      $height="calc(100dvh - var(--twake-bar-height, 0px))"
       {...propsLayout}
     >
       <MainLayoutContent
@@ -97,7 +97,7 @@ export const MainContent = ({
       $align="center"
       $flex={1}
       $width="100%"
-      $height="100dvh"
+      $height="calc(100dvh - var(--twake-bar-height, 0px))"
       $position="relative"
       $background="var(--c--contextuals--background--surface--primary)"
       $css={css`

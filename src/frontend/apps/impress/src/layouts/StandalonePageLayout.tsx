@@ -19,7 +19,10 @@ export function StandalonePageLayout({
   headerActions,
 }: StandalonePageLayoutProps) {
   return (
-    <Box className="--docs--standalone-page-layout" $minHeight="100dvh">
+    <Box
+      className="--docs--standalone-page-layout"
+      $minHeight="calc(100dvh - var(--twake-bar-height, 0px))"
+    >
       <HeaderBar actions={headerActions} />
       <MainContent $height="auto" $flex={1} $justify="center">
         {children}

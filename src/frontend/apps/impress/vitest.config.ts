@@ -19,6 +19,10 @@ export default defineConfig({
           '@blocknote/math-block',
           '@gouvfr-lasuite/ui-kit',
           '@gouvfr-lasuite/cunningham-react',
+          // ESM with extensionless imports, which Node refuses
+          '@linagora/twake-bar',
+          '@linagora/twake-mui',
+          '@linagora/twake-sdk',
         ],
       },
     },
