@@ -102,10 +102,13 @@ export const DocShareMemberItem = ({
 
 interface QuickSearchGroupMemberProps {
   doc: Doc;
+  /** The inherited accesses are listed apart, under the parent page */
+  directOnly?: boolean;
 }
 
 export const QuickSearchGroupMember = ({
   doc,
+  directOnly = false,
 }: QuickSearchGroupMemberProps) => {
   const { t } = useTranslation();
   const membersQuery = useDocAccesses({
@@ -118,14 +121,17 @@ export const QuickSearchGroupMember = ({
 
   const membersData: QuickSearchData<Access> = useMemo(() => {
     const members = (membersQuery.data || []).filter(
-      (access) => !managedIds?.includes(access.id),
+      (access) =>
+        !managedIds?.includes(access.id) &&
+        (!directOnly || access.document.id === doc.id),
     );
 
     const count = members.length;
 
     return {
       groupName:
-        count === 1
+        // The owner of a sub-page is listed with its parent, not here
+        count === 1 && !directOnly
           ? t('Document owner', {
               description: 'Label of the single owner of a document',
             })
@@ -137,7 +143,7 @@ export const QuickSearchGroupMember = ({
       elements: members,
       endActions: undefined,
     };
-  }, [membersQuery.data, managedIds, t]);
+  }, [membersQuery.data, managedIds, directOnly, doc.id, t]);
 
   return (
     <Box

@@ -94,7 +94,10 @@ export const DocShareModal = ({ doc, onClose, isRootDoc = true }: Props) => {
   const [inputValue, setInputValue] = useState('');
 
   const [listHeight, setListHeight] = useState<string>('400px');
-  const canShare = doc.abilities.accesses_manage && isRootDoc;
+  // Docs shares from the root page only; the Workplace shares a sub-page on
+  // its own, which gives its own pointer in Drive (stories P3, P5)
+  const sharedHere = isRootDoc || !!platformURL;
+  const canShare = doc.abilities.accesses_manage && sharedHere;
   const canViewAccesses = doc.abilities.accesses_view;
   const showMemberSection = inputValue === '' && selectedUsers.length === 0;
   const showFooter = selectedUsers.length === 0 && !inputValue;
@@ -332,12 +335,15 @@ export const DocShareModal = ({ doc, onClose, isRootDoc = true }: Props) => {
                       }
                     />
                   )}
-                  {showMemberSection && isRootDoc && (
+                  {showMemberSection && sharedHere && (
                     <Box $padding={{ top: 'base' }}>
                       <QuickSearchGroupAccessRequest doc={doc} />
                       <QuickSearchGroupInvitation doc={doc} />
                       {platformURL && <QuickSearchGroupGrant doc={doc} />}
-                      <QuickSearchGroupMember doc={doc} />
+                      <QuickSearchGroupMember
+                        doc={doc}
+                        directOnly={!isRootDoc}
+                      />
                     </Box>
                   )}
 
